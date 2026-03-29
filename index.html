@@ -869,24 +869,33 @@
               pdf.setDrawColor(200, 200, 220);
               pdf.rect(margine, y - 14, pageW, rowH, 'S');
               for (let ci = 0; ci < nCol; ci++) {
-             let testo = riga[ci] ?? '';
-            if (typeof testo === 'number') {
-              if (testo > 1 && Number.isInteger(testo)) {
-                // Data Excel → converti in data leggibile
-                const data = new Date(Math.round((testo - 25569) * 86400 * 1000));
-                testo = data.toLocaleDateString('it-IT');
-              } else if (testo > 0 && testo < 1) {
-                // Orario Excel → converti in HH:MM
-                const totalMinuti = Math.round(testo * 24 * 60);
-                const ore = Math.floor(totalMinuti / 60);
-                const minuti = totalMinuti % 60;
-                testo = `${String(ore).padStart(2,'0')}:${String(minuti).padStart(2,'0')}`;
+              let testo = riga[ci] ?? '';
+              if (typeof testo === 'number') {
+                if (testo > 59 && Number.isInteger(testo)) {
+                  // Data Excel
+                  const data = new Date((testo - 25569) * 86400000);
+                  const gg = String(data.getUTCDate()).padStart(2,'0');
+                  const mm = String(data.getUTCMonth()+1).padStart(2,'0');
+                  const aaaa = data.getUTCFullYear();
+                  testo = `${gg}/${mm}/${aaaa}`;
+                } else if (testo > 0 && testo < 1) {
+                  // Orario
+                  const totalMinuti = Math.round(testo * 24 * 60);
+                  const ore = Math.floor(totalMinuti / 60);
+                  const minuti = totalMinuti % 60;
+                  testo = `${String(ore).padStart(2,'0')}:${String(minuti).padStart(2,'0')}`;
+                } else if (testo >= 1 && !Number.isInteger(testo)) {
+                  // Ore totali tipo 400:00 (salvate come numero decimale grande)
+                  const totalMinuti = Math.round(testo * 24 * 60);
+                  const ore = Math.floor(totalMinuti / 60);
+                  const minuti = totalMinuti % 60;
+                  testo = `${ore}:${String(minuti).padStart(2,'0')}`;
+                } else {
+                  testo = String(testo);
+                }
               } else {
-                testo = parseFloat(testo.toFixed(2)).toString();
+                testo = String(testo);
               }
-            } else {
-              testo = String(testo);
-            }
                 const x = margine + ci * colW + 4;
                 pdf.text(pdf.splitTextToSize(testo, colW - 8)[0] || '', x, y);
               }
