@@ -9,7 +9,7 @@ CORS(app)
 
 # ── CONFIGURAZIONE ────────────────────────────────────────────────────────────
 stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
-STRIPE_PRICE_ID = "price_1TGLtxDqeZbc6avmpHo77AAj"
+STRIPE_PRICE_ID = "price_1TGO5HDm0ibeaThgU32ILIZ0"
 CONVERSIONI_GRATIS = 3
 
 # ── DATABASE ──────────────────────────────────────────────────────────────────
