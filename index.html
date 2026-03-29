@@ -836,7 +836,7 @@
         try {
           const wb = XLSX.read(e.target.result, { type: 'array' });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const dati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false, dateNF: 'dd/mm/yyyy' });
+          const dati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
           const { jsPDF } = window.jspdf;
           const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
           const margine = 40, pageW = 515, pageH = 842;
