@@ -28,6 +28,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+# Inizializza il database all'avvio (funziona anche con gunicorn)
+init_db()
+
 def get_utente(session_id):
     conn = sqlite3.connect("utenti.db")
     c = conn.cursor()
@@ -42,6 +45,10 @@ def get_utente(session_id):
     return utente
 
 # ── ROUTES ────────────────────────────────────────────────────────────────────
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "ok", "messaggio": "Backend ConvertiPDF attivo!"})
 
 @app.route("/stato", methods=["GET"])
 def stato():
@@ -131,9 +138,8 @@ def webhook():
 
     return jsonify({"ok": True})
 
-# ── AVVIO ─────────────────────────────────────────────────────────────────────
+# ── AVVIO LOCALE ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    init_db()
     port = int(os.environ.get("PORT", 5000))
     print(f"✅ Backend ConvertiPDF avviato sulla porta {port}")
     app.run(host="0.0.0.0", port=port)
