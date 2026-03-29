@@ -585,7 +585,7 @@
 </div>
 
 <footer>
-  Fatto con ❤ da <span>Il Tuo Nome</span> &nbsp;•&nbsp; ConvertiPDF &nbsp;•&nbsp; 2026
+  Fatto con ❤ da <span>walid</span> &nbsp;•&nbsp; ConvertiPDF &nbsp;•&nbsp; 2026
 </footer>
 
 <script>
@@ -681,7 +681,7 @@
     const ext = file.name.split('.').pop().toLowerCase();
     const supportati = ['jpg','jpeg','png','txt','xlsx','xls'];
     if (!supportati.includes(ext)) {
-      mostraErrore('Formato non supportato. Usa JPG, PNG, TXT o XLSX.');
+      mostraErrore('Formato non supportato. Il sito accetta solo: JPG, PNG, TXT, XLSX. I file RTF, HEIC e altri formati non sono compatibili.');
       return;
     }
     fileSelezionato = file;
@@ -869,7 +869,12 @@
               pdf.setDrawColor(200, 200, 220);
               pdf.rect(margine, y - 14, pageW, rowH, 'S');
               for (let ci = 0; ci < nCol; ci++) {
-                const testo = String(riga[ci] ?? '');
+              let testo = riga[ci] ?? '';
+              if (typeof testo === 'number') {
+                testo = Number.isInteger(testo) ? String(testo) : parseFloat(testo.toFixed(2)).toString();
+              } else {
+                testo = String(testo);
+              }
                 const x = margine + ci * colW + 4;
                 pdf.text(pdf.splitTextToSize(testo, colW - 8)[0] || '', x, y);
               }
