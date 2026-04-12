@@ -836,6 +836,21 @@
         try {
           const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
+
+          // Gestione celle unite: copia il valore in tutte le celle del merge
+          if (ws['!merges']) {
+            ws['!merges'].forEach(merge => {
+              const primaCell = XLSX.utils.encode_cell({ r: merge.s.r, c: merge.s.c });
+              const valore = ws[primaCell] ? ws[primaCell].v : '';
+              for (let r = merge.s.r; r <= merge.e.r; r++) {
+                for (let c = merge.s.c; c <= merge.e.c; c++) {
+                  const addr = XLSX.utils.encode_cell({ r, c });
+                  if (!ws[addr]) ws[addr] = { v: String(valore), t: 's' };
+                }
+              }
+            });
+          }
+
           const dati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
           const { jsPDF } = window.jspdf;
 
