@@ -851,7 +851,15 @@
             });
           }
 
-          const dati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+          const tuttiDati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
+
+          // Trova l'ultima riga con almeno un valore non vuoto
+          let ultimaRigaValida = 0;
+          tuttiDati.forEach((riga, i) => {
+            if (riga.some(c => String(c).trim() !== '')) ultimaRigaValida = i;
+          });
+          // Taglia le righe vuote finali
+          const dati = tuttiDati.slice(0, ultimaRigaValida + 1);
           const { jsPDF } = window.jspdf;
 
           // Determina orientamento in base al numero di colonne
@@ -892,19 +900,20 @@
               }
             });
 
-            // Calcola larghezze proporzionali con minimo garantito
-            const totChars = colMaxChars.reduce((a, b) => a + b, 0) || 1;
-            const colWidths = colMaxChars.map(c => {
-              const propW = (c / totChars) * pageW;
-              // minimo = larghezza stimata del testo più lungo + padding
-              const minW = Math.max(minColW, c * (fontSize * 0.52) + padding * 2);
-              return Math.min(pageW * 0.5, Math.max(minW, propW));
+            // Calcola larghezze basate sul contenuto reale
+            // Ogni carattere occupa circa fontSize * 0.55 pt
+            const charPt = fontSize * 0.55;
+            const colW = colMaxChars.map(c => {
+              const minW = Math.max(minColW, c * charPt + padding * 2);
+              return minW;
             });
 
-            // Normalizza larghezze per riempire pageW esatto
-            const totW = colWidths.reduce((a, b) => a + b, 0);
-            const scale = pageW / totW;
-            const colW = colWidths.map(w => w * scale);
+            // Se le colonne totali sono meno della pagina, scala per riempire
+            const totColW = colW.reduce((a, b) => a + b, 0);
+            if (totColW < pageW) {
+              const scale = pageW / totColW;
+              colW.forEach((w, i) => colW[i] = w * scale);
+            }
 
             // Disegna righe (salta righe completamente vuote tranne header)
             dati.forEach((riga, ri) => {
@@ -954,9 +963,14 @@
                   pdf.line(xCur, y - 13, xCur, y - 13 + thisRowH);
                 }
 
-                lines.forEach((line, li) => {
-                  pdf.text(line, x, y + li * (fontSize + 3));
-                });
+                // Se testo supera la colonna, mostralo comunque senza tagliarlo
+                if (lines.length === 0 || testo.trim() === '') {
+                  // niente
+                } else {
+                  lines.forEach((line, li) => {
+                    pdf.text(line, x, y + li * (fontSize + 3));
+                  });
+                }
 
                 xCur += colW[ci];
               }
