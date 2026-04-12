@@ -834,46 +834,114 @@
       const reader = new FileReader();
       reader.onload = e => {
         try {
-          const wb = XLSX.read(e.target.result, { type: 'array' });
+          const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const dati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+          const dati = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
           const { jsPDF } = window.jspdf;
-          const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-          const margine = 40, pageW = 515, pageH = 842;
+
+          // Determina orientamento in base al numero di colonne
+          const nCol = dati.length > 0 ? Math.max(...dati.map(r => r.length)) : 1;
+          const orientation = nCol > 6 ? 'l' : 'p';
+          const pdf = new jsPDF({ orientation, unit: 'pt', format: 'a4' });
+
+          const margine = 40;
+          const pageW = orientation === 'l' ? 762 : 515;
+          const pageH = orientation === 'l' ? 555 : 842;
+          const rowH = 18;
+          const fontSize = 8;
+          const padding = 5;
           let y = 60;
 
+          // Titolo
           pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(13);
+          pdf.setFontSize(12);
+          pdf.setTextColor(30, 30, 30);
           pdf.text(file.name, margine, y);
-          y += 30;
+          y += 28;
 
           if (dati.length > 0) {
-            const nCol = Math.max(...dati.map(r => r.length));
-            const colW = pageW / nCol;
-            const rowH = 20;
+            // Calcola larghezza massima del contenuto per ogni colonna
+            pdf.setFontSize(fontSize);
+            const charW = fontSize * 0.5; // stima larghezza carattere
+            const minColW = 30;
+            const maxColW = pageW / Math.max(nCol, 1);
 
-            dati.forEach((riga, ri) => {
-              if (y + rowH > pageH - 40) { pdf.addPage(); y = 50; }
-              if (ri === 0) {
-                pdf.setFillColor(15, 52, 96);
-                pdf.rect(margine, y - 14, pageW, rowH, 'F');
-                pdf.setTextColor(255, 255, 255);
-                pdf.setFont('helvetica', 'bold');
-                pdf.setFontSize(8.5);
-              } else {
-                if (ri % 2 === 0) { pdf.setFillColor(245, 245, 255); pdf.rect(margine, y - 14, pageW, rowH, 'F'); }
-                pdf.setTextColor(30, 30, 30);
-                pdf.setFont('helvetica', 'normal');
-                pdf.setFontSize(8);
-              }
-              pdf.setDrawColor(200, 200, 220);
-              pdf.rect(margine, y - 14, pageW, rowH, 'S');
+            // Misura larghezza contenuto per ogni colonna
+            const colMaxChars = new Array(nCol).fill(0);
+            dati.forEach(riga => {
               for (let ci = 0; ci < nCol; ci++) {
                 const testo = String(riga[ci] ?? '');
-                const x = margine + ci * colW + 4;
-                pdf.text(pdf.splitTextToSize(testo, colW - 8)[0] || '', x, y);
+                colMaxChars[ci] = Math.max(colMaxChars[ci], testo.length);
               }
-              y += rowH;
+            });
+
+            // Calcola larghezze proporzionali
+            const totChars = colMaxChars.reduce((a, b) => a + b, 0) || 1;
+            const colWidths = colMaxChars.map(c => {
+              const propW = (c / totChars) * pageW;
+              return Math.min(maxColW, Math.max(minColW, propW));
+            });
+
+            // Normalizza larghezze per riempire pageW esatto
+            const totW = colWidths.reduce((a, b) => a + b, 0);
+            const scale = pageW / totW;
+            const colW = colWidths.map(w => w * scale);
+
+            // Disegna righe
+            dati.forEach((riga, ri) => {
+              // Calcola altezza riga (potrebbe servire multiline)
+              let maxLines = 1;
+              for (let ci = 0; ci < nCol; ci++) {
+                const testo = String(riga[ci] ?? '');
+                const lines = pdf.splitTextToSize(testo, colW[ci] - padding * 2).length;
+                maxLines = Math.max(maxLines, lines);
+              }
+              const thisRowH = Math.max(rowH, maxLines * (fontSize + 3) + 6);
+
+              if (y + thisRowH > pageH - 40) { pdf.addPage(); y = 50; }
+
+              // Sfondo riga
+              if (ri === 0) {
+                pdf.setFillColor(15, 52, 96);
+                pdf.rect(margine, y - 13, pageW, thisRowH, 'F');
+                pdf.setTextColor(255, 255, 255);
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(fontSize + 0.5);
+              } else {
+                if (ri % 2 === 0) {
+                  pdf.setFillColor(245, 247, 255);
+                  pdf.rect(margine, y - 13, pageW, thisRowH, 'F');
+                }
+                pdf.setTextColor(30, 30, 30);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(fontSize);
+              }
+
+              // Bordo riga
+              pdf.setDrawColor(200, 205, 220);
+              pdf.rect(margine, y - 13, pageW, thisRowH, 'S');
+
+              // Testo celle
+              let xCur = margine;
+              for (let ci = 0; ci < nCol; ci++) {
+                const testo = String(riga[ci] ?? '');
+                const x = xCur + padding;
+                const lines = pdf.splitTextToSize(testo, colW[ci] - padding * 2);
+
+                // Linea verticale separatrice
+                if (ci > 0) {
+                  pdf.setDrawColor(200, 205, 220);
+                  pdf.line(xCur, y - 13, xCur, y - 13 + thisRowH);
+                }
+
+                lines.forEach((line, li) => {
+                  pdf.text(line, x, y + li * (fontSize + 3));
+                });
+
+                xCur += colW[ci];
+              }
+
+              y += thisRowH;
             });
           }
 
