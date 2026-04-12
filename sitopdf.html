@@ -882,19 +882,23 @@
             const maxColW = pageW / Math.max(nCol, 1);
 
             // Misura larghezza contenuto per ogni colonna
+            // Considera solo righe non vuote
+            const righeValide = dati.filter((r, i) => i === 0 || r.some(c => String(c).trim() !== ''));
             const colMaxChars = new Array(nCol).fill(0);
-            dati.forEach(riga => {
+            righeValide.forEach(riga => {
               for (let ci = 0; ci < nCol; ci++) {
                 const testo = String(riga[ci] ?? '');
                 colMaxChars[ci] = Math.max(colMaxChars[ci], testo.length);
               }
             });
 
-            // Calcola larghezze proporzionali
+            // Calcola larghezze proporzionali con minimo garantito
             const totChars = colMaxChars.reduce((a, b) => a + b, 0) || 1;
             const colWidths = colMaxChars.map(c => {
               const propW = (c / totChars) * pageW;
-              return Math.min(maxColW, Math.max(minColW, propW));
+              // minimo = larghezza stimata del testo più lungo + padding
+              const minW = Math.max(minColW, c * (fontSize * 0.52) + padding * 2);
+              return Math.min(pageW * 0.5, Math.max(minW, propW));
             });
 
             // Normalizza larghezze per riempire pageW esatto
@@ -902,8 +906,9 @@
             const scale = pageW / totW;
             const colW = colWidths.map(w => w * scale);
 
-            // Disegna righe
+            // Disegna righe (salta righe completamente vuote tranne header)
             dati.forEach((riga, ri) => {
+              if (ri > 0 && riga.every(c => String(c).trim() === '')) return;
               // Calcola altezza riga (potrebbe servire multiline)
               let maxLines = 1;
               for (let ci = 0; ci < nCol; ci++) {
